@@ -1,0 +1,3 @@
+file(REMOVE_RECURSE
+  "libDO3THINK_LIBRARIES.a"
+)

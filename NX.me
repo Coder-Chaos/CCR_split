@@ -1,0 +1,77 @@
+
+
+python tegra-cam.py --usb --vid 0 --width 1280 --height 720
+python tfmini.py
+
+
+sudo date -s '2030-1-1 7:17'
+sudo ifconfig eth0 down
+xrandr --fb 1920x1080
+
+
+ifconfig -a
+sudo ip link set can0 up
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 1000000 loopback on
+sudo ip link set can0 type can bitrate 1000000
+sudo ip link set can0 up type can restart-ms 100
+
+sudo ip -d -s link show can0
+
+candump can0 
+cansend can0 001#ff.ff.ff.ff.ff.ff.ff.fc
+cansend can0 001#ff.ff.ff.ff.ff.ff.ff.fd
+cansend can0 001#ff.ff.ff.ff.ff.ff.ff.fe
+
+#maxon控制
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 1000000 loopback off
+sudo ip link set can0 up type can restart-ms 100
+cansend can0 000#01.00
+cansend can0 205#06.00
+cansend can0 205#0f.00
+
+cansend can0 205#00.00
+cansend can0 605#2b.60.40.00.00.80.00.00
+cansend can0 605#2b.40.60.00.80.00.00.00
+cansend can0 605#2b.40.60.00.00.00.80.00
+
+POS控制P10kp1kd1
+cansend can0 001#8d.66.7f.f0.08.33.37.fd
+cansend can0 001#7f ff 7f f0 08 ff f7 ff
+
+cansend can0 001#7f.ff.73.70.00.cc.c7.ff
+cansend can0 001#7f.ff.8c.70.00.cc.c7.ff
+cansend can0 001#7f.ff.8c.70.00.cc.c7.ff
+
+sudo ifconfig eth0 192.168.10.100 netmask 255.255.255.0
+
+主测试
+modpoll -r 01 10.60.72.28 1234
+从测试
+linux_arm-eabihf/diagslave -m tcp
+
+
+Linux文件操作open/write/close()
+	int fd;
+    fd = open("/home/chaos/ccr_nx/log/att.me",O_RDWR);
+    if(fd == -1){
+      printf("open file1 failed\n");
+      fd = open("/home/chaos/ccr_nx/log/att.me",O_RDWR|O_CREAT,0600);
+      if(fd > 0){
+              printf("create file1 success\n");
+      }
+    }
+    printf("fd = %d\n",fd);
+    char buf1[]="aaa";     
+    write(fd,buf1,strlen(buf1));
+    char *buf2;
+    buf2 = "123\tbbb\n";
+    write(fd, buf2, strlen(buf2));
+
+
+
+
+
+
+

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libDO3THINK_LIBRARIES.a CMakeFiles/DO3THINK_LIBRARIES.dir/__/__/lib/dvp/Demo/Demo.cpp.o
+/usr/bin/ranlib libDO3THINK_LIBRARIES.a
