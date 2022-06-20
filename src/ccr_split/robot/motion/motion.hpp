@@ -148,8 +148,8 @@ namespace ccr_split {
     /* -------------------debug parameters------------------------------------ */
     /* upclaw debug parameters */
     // upclaw hold torque, 55%
-    static const __s16 kUpClawHoldTorque = 750;
-    // static const __s16 kUpClawHoldTorque = 600;
+    static const __s16 kUpClawHoldTorque = 650;
+    // static const __s16 kUpClawHoldTorque = 600;800
 
     // upclaw loose distance
     static const __s32 kUpClawLooseDistance = -30 * 10000;

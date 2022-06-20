@@ -820,11 +820,11 @@ namespace ccr_split
       // motors vel_up stop
       for (int i = 0; i < 2; i++)
       {
-      tmotors_->at(2*i).param_->tmtSetVel = 0.02f;
+      tmotors_->at(2*i).param_->tmtSetVel = 0.05f;
       tmotors_->at(2*i).param_->tmtSetKD = 0.3f;
       tmotors_->at(2*i).SetVel(tmotors_->at(2*i).param_->tmtSetVel,
                               tmotors_->at(2*i).param_->tmtSetKD);
-      tmotors_->at(2*i + 1).param_->tmtSetVel = 0.02f;
+      tmotors_->at(2*i + 1).param_->tmtSetVel = 0.05f;
       tmotors_->at(2*i + 1).param_->tmtSetKD = 0.3f;
       tmotors_->at(2*i + 1).SetVel(tmotors_->at(2*i + 1).param_->tmtSetVel, 
         tmotors_->at(2*i + 1).param_->tmtSetKD);
