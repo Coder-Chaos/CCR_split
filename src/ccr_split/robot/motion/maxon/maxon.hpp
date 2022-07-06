@@ -18,6 +18,8 @@ struct maxon_type {
   // __s32 PosSV;
   __s32 PosPV;
 
+  __s64 PosPV_rmd;
+
   // __s32 PosLimit;
   __s32 SpdSV;
   __s32 SpdPV;
@@ -26,7 +28,8 @@ struct maxon_type {
   // __s16 MaxcurrentLocked;
   // __u16 RdUpdate;
   // maxon pos_sum
-  __s32 pos_sum;
+  //__s32 pos_sum;
+  double pos_sum;
 
   /* ------------------put new variables blow this line---------------- */
 

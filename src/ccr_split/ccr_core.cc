@@ -25,32 +25,34 @@ int main(int argc, char **argv) {
   ccr.Guard();
 
   //ccr.StartVisionDetection();
-  
+  sleep(2);
   //start pmhv thread
   ccr.PMhvRecv();
-
+  sleep(1);
   // start tfmini thread
   ccr.TF03Recv();
 
   ccr.TF02Recv();
-
+  
   ccr.TFminiRecv();
   
-  /*
+
   ccr.Getatt();
-  sleep(2);
+  sleep(1);
   
   ccr.Getpos();
   
-  sleep(2);
+  sleep(1);
   ccr.Logdata();
-  */
   
+  //*/
+  //sleep(2);
 #if TEST_MOTION
   // robot run
   ccr.Run();
+  //sleep(2);
 #endif
-//printf("ccr Run done!\n");
+  printf("ccr Run done!\n");
 #if TEST_UVC
   ccr.StartUVC();
 #endif
@@ -63,32 +65,38 @@ int main(int argc, char **argv) {
   //PAUSE();
   do {                                                                         
     printf("---------------press e key to exit!---------------\n");        
-    //printf("---------------press any key to exit!---------------\n");                                                              
+    sleep(1);                                                              
   } while (getchar() != 'e');
-    //getchar();
-  //} while (0);
-
-  //printf("ccr Stop start!\n");
+  
+  /*do {                                                                                    
+    printf("---------------press any key to exit!---------------\n");                                                              
+    getchar();
+  } while (0);
+  */
+  printf("ccr Stop start!\n");
 #if TEST_MOTION
   //   wait thread complete
   ccr.Stop();
   printf("ccr Stop done!\n");
 #endif
 
-  
+  sleep(3); 
 
   ccr.PMhvStop();
-/*
+  sleep(1);
   ccr.LogdataStop();
   printf("LogdataStop done!\n");
-  ccr.GetattStop();
-  //sleep(1);
+  sleep(1);
   ccr.GetposStop();
-*/
+
+  ccr.GetattStop();
+  sleep(1);
+  
   ccr.TF03Stop();
   ccr.TF02Stop();
   ccr.TFminiStop();
   printf("tf Stop done!\n");
+  
 #if TEST_UVC
   ccr.StopUVC();
 #endif

@@ -19,8 +19,11 @@ namespace ccr_split {
 		//printf("len %d，gyro%d;%d: %f; %f; %f\n", sizeof(IMU_DATA), imu.accelValid, 
         //    imu.gyroValid, imu.gyro(0), imu.gyro(1), imu.gyro(2));
         bzero(imu_buff,sizeof(IMU_DATA));
-        return nb;
-
+		if((imu.accel(0)*imu.accel(1)*imu.accel(2)) != 0){
+        	return nb;
+		} else{
+			return 0;
+		}
     }
 
     int Estimator::recv_rtk()
@@ -37,10 +40,10 @@ namespace ccr_split {
             {
                 if((i=strlen(strstr(rtk_buff, "$GNGGA"))) > GNGGA_SIZE)    //保证buf数组中有一个完整的 "$GNGGA,——"字符串
                 {
-                    ret=sscanf(rtk_buff,"$GNGGA,%*f,%f,%c,%f,%c,%d,%*d,%*f,%f", &rtk.fX, &rtk.cX, 
+                    ret=sscanf(rtk_buff,"$GNGGA,%*f,%lf,%c,%lf,%c,%d,%*d,%*f,%lf", &rtk.fX, &rtk.cX, 
                         &rtk.fY, &rtk.cY, &rtk.nQ, &rtk.fH);
                     if(ret==6&&(rtk.nQ==1||rtk.nQ==2)){
-                        printf("cX:fX=%c:%f\ncY:fY=%c:%f\nfH=%f\n",rtk.cX, rtk.fX, 
+                        printf("cX:fX=%c:%lf\ncY:fY=%c:%lf\nfH=%lf\n",rtk.cX, rtk.fX, 
                         rtk.cY,rtk.fY,rtk.fH);//此处可将解析出的数据发送给其他进程
                     } else{
                         //printf("strlen= %d; rtk.nQ = %d\n", i, rtk.nQ);
@@ -99,7 +102,7 @@ namespace ccr_split {
     	// derivative of velocity is accelerometer acceleration
     	// (in input matrix) - bias (in body frame)
     
-    	_A(X_vz, X_bz) = -1;
+    	_A(X_vz, X_bz) = 1;
     }
 
     void Estimator::updateSSParams()
@@ -130,24 +133,26 @@ namespace ccr_split {
     {
     	// get acceleration
     	
-    	_u(U_az) = CONSTANTS_ONE_G*(cosf(_theta) -_accel(2));
+    	_u(U_az) = CONSTANTS_ONE_G*(cosf(_theta) - _accel(2));
+		//_u(U_az) = 0.004f;
+		if(fabs(_u(U_az))< 0.05f)
+			_u(U_az) = 0;
 
     	// update state space based on new states
     	updateSSStates();
-
+		Vector<float, n_x> k1, k2, k3, k4;
     	// continuous time kalman filter prediction
     	// integrate runge kutta 4th order
     	// TODO move rk4 algorithm to matrixlib
     	// https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods
     	float h = dt;
-    	Vector<float, n_x> k1, k2, k3, k4;
 		//printf("old_x=[%6.2f, %6.2f, %6.2f, %6.2f]\n", _x(0), _x(1), _x(2), _x(3));
     	k1 = dynamics(0, _x, _u);
     	k2 = dynamics(h / 2, _x + k1 * h / 2, _u);
     	k3 = dynamics(h / 2, _x + k2 * h / 2, _u);
     	k4 = dynamics(h, _x + k3 * h, _u);
     	Vector<float, n_x> dx = (k1 + k2 * 2 + k3 * 2 + k4) * (h / 6);
-		//printf("dx=[%6.2f, %6.2f, %6.2f, %6.2f]\n", dx(0), dx(1), dx(2), dx(3));
+		//printf("dt%6.2f;dx=[%6.4f, %6.4f, %6.4f, %6.4f]\n", h, dx(0), dx(1), dx(2), dx(3));
 		//printf("theta%6.2f, _accel%6.2f, _u%6.2f, K1%6.2f, %6.2f, %6.2f, %6.2f]\n", 
 		//	_theta, _accel(0), _u(U_az), k1(0), k2(0), k3(0), k4(0));
 		//printf("pos_x=[%f, %f, %f, %f]\n", _x(0), _x(1), _x(2), _x(3));
@@ -198,35 +203,18 @@ namespace ccr_split {
 		//_filter.apply(_x(X_tz) - _x(X_z));
 	        
     }
-
-	void Estimator::gpsInit1()
-	{
-		// check for good gps signal
-
-		printf("[l29] gps init \n");
-		// measure
-		Vector<double, 3> y_org;
-		Vector<double, 3> temp;
-		Vector<double, n_y_gps> y;
-		printf("[l34] gps init \n");
-	}
     
-
     void Estimator::pos_update(){
         
-        uint64_t last_time = 0;
-		_x.setZero();
-		int i;
 		//printf("pos147_x=[%f, %f, %f, %f]\n", _x(0), _x(1), _x(2), _x(3));
-        while(!_pos_should_exit){
+        //while(!_pos_should_exit){
 
         /* time from previous iteration */
 		struct timeval tv;
         gettimeofday(&tv,NULL);
         uint64_t now = tv.tv_sec*1000000 + tv.tv_usec;
-		const float val = (now  - last_time) / 1e6f;
+		const float val = (now  - _timeStamp) / 1e6f;
         const float dt = (val < _dt_min) ? _dt_min : ((val > _dt_max) ? _dt_max : val);
-		last_time = now;
 		_timeStamp = now;
 		if(!first_pos){
 			_time_origin = _timeStamp;
@@ -241,31 +229,44 @@ namespace ccr_split {
 		// do prediction
 		pos_predict(dt);
 		//printf("pos_x1=[%f, %f, %f, %f]\n", _x(0), _x(1), _x(2), _x(3));
+		//printf("t=[%6.5f, %6.3f; %6.3f, %6.3f]\n", _dt_now, _u(0), _x(0), _x(2));
+		/*gettimeofday(&tv,NULL);
+        now = tv.tv_sec*1000000 + tv.tv_usec;
+		float dt1 = (now  - _timeStamp) / 1e6f;
+		printf("dt1=[%6.5f,%6.2f]\n", dt1, _x(0));
+		*/
 		// sensor corrections/ initializations
-		_gpsUpdated =true;
-		//gpsInit();
+		//_gpsUpdated =true;
 		if (_gpsUpdated) {
-			//printf("gps start=[%6.2f]\n", _x(0));
+			printf("gps start=[%6.2f]\n", _x(0));
 			if (_sensorTimeout & SENSOR_GPS) {
 				//printf("gpsInit0\n");
 				gpsInit();
-				
 			} else {
 				//printf("gpsCorrect\n");
 				gpsCorrect();
-				
+				//printf("pos_x1=[%f, %f, %f, %f]\n", _x(0), _x(1), _x(2), _x(3));
 			}
+		} else{
+			//printf("gps false\n");
 		}
+		
 		// propagate delayed state, no matter what
 		// if state is frozen, delayed state still
 		// needs to be propagated with frozen state
-		usleep(1000 * 20);
 		float dt_hist = 1.0e-6f * (_timeStamp - _time_last_hist);
+		/*
+		gettimeofday(&tv,NULL);
+        now = tv.tv_sec*1000000 + tv.tv_usec;
+		float dt2 = (now  - _timeStamp) / 1e6f;
+		printf("dt2=[%6.5f,%6.2f]\n", dt2, _x(0));
+		*/
 
 		if (_time_last_hist == 0 ||
 		    (dt_hist > HIST_STEP)) {
 			_x0 = _x;
 			_time_last_hist = _timeStamp;
+			
 			//printf("acc=[%6.2f, %6.2f, %6.2f]\n", _accel(0),_accel(1), _accel(2));
 			//printf("gyro=[%6.2f, %6.2f, %6.2f]\n", _gyro(0),_gyro(1), _gyro(2));
 			//printf("att_theta%6.2f°;psi%6.2f°; pos_x=[%6.2fcm, %6.2fcm/s]\n", 
@@ -274,21 +275,21 @@ namespace ccr_split {
 			//printf("pos_x=[%6.2f, %6.2f, %6.2f, %6.2f]\n", _x(0), _x(1), _x(2), _x(3));
 		}
 		_dt_now=1.0e-6f * (_timeStamp - _time_origin);
-		//if(i%100 == 0)	
-		//	printf("Time%6.4f; att_theta%6.2f°;psi%6.2f°; pos_x=[%6.2fcm, %6.2fcm/s]; acc=%6.3fm/s2\n", 
-		//		_dt_now, _theta/PAI*180, _psi/PAI*180, _x(0)*100, _x(1)*100, _u(U_az));
-		i ++;
-		
+		if(_ipos % 50 == 0)
+			//printf("Time%6.4fs; att_theta%6.2f°;psi%6.2f°; pos_x=[%6.2fcm, %6.2fcm/s]; u_acc=%6.3fm/s2\n", 
+			//	_dt_now, _theta/PAI*180, _psi/PAI*180, _x(0)*100, _x(1)*100, _u(U_az));
 
-        }
+			//printf("Time%6.4fs; att_theta%6.2f°;psi%6.2f°; _xf=[%6.2fcm, %6.2fcm/s, %6.2fcm/s]; pos_x=[%6.2fcm, %6.2fcm/s]; u_acc=%6.3fm/s2\n", 
+			//	_dt_now, _theta/PAI*180, _psi/PAI*180, _xf(0)*100, _xf(1)*100, _xf(2)*100, _x(0)*100, _x(1)*100, _u(U_az));
+		_ipos ++;
+		usleep(1000 * 10);		
+
+        //}
     }
 
     bool Estimator::att_run(){
         
-        uint64_t last_time = 0;
-        int i;
-        
-        while(!_att_should_exit){
+        //while(!_att_should_exit){
 			
 			/* time from previous iteration */
 			struct timeval tv;
@@ -310,8 +311,12 @@ namespace ccr_split {
 					/*_gyro(0) = imu.gyro(0);
 					_gyro(1) = imu.gyro(1);
 					_gyro(2) = imu.gyro(2);
+					//检测本体
+					_gyro(0) = imu.gyro(0);
+					_gyro(1) = imu.gyro(2);
+					_gyro(2) = imu.gyro(1);
 					*/
-					//转动
+					//测试
 					_gyro(0) = imu.gyro(0);
 					_gyro(1) = imu.gyro(2);
 					_gyro(2) = imu.gyro(1);
@@ -321,7 +326,12 @@ namespace ccr_split {
 					/*_accel(0) = imu.accel(0);
 					_accel(1) = imu.accel(1);
 					_accel(2) = imu.accel(2);
+					//检测本体
+					_accel(0) = imu.accel(0);
+					_accel(1) = imu.accel(2);
+					_accel(2) = imu.accel(1);
 					*/
+					//测试
 					_accel(0) = imu.accel(0);
 					_accel(1) = imu.accel(2);
 					_accel(2) = imu.accel(1);
@@ -339,14 +349,14 @@ namespace ccr_split {
 			if (att_update(dt)) {
 				_theta = theta;
 				_psi = psi;
-        	    //if(i % 10 == 0)
-				//printf("att_update!theta%6.2f°;psi%6.2f°\n", _theta/PAI*180, _psi/PAI*180);
+        	    if(_iatt % 50 == 0)
+					//printf("att_update!theta%6.2f°;psi%6.2f°\n", _theta/PAI*180, _psi/PAI*180);
 				float dt_now=1.0e-6f * (now - _time_att_origin);
 				
 			}
-			
-        	i ++;
-        }
+			usleep(1000 * 10);
+			_iatt ++;
+        //}
 
     }
 
@@ -398,8 +408,8 @@ namespace ccr_split {
 
         _q = Eulerf(0.0f, theta, psi);
 
-		_theta = theta;
-		_psi = psi;
+		//_theta = theta;
+		//_psi = psi;
 
 	    // Normalize quaternion
 	    _q.normalize();

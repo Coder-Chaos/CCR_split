@@ -78,9 +78,10 @@ namespace ccr_split
     double odometer_down = 0;
     double odometer_up = 0;
 
+    //cuav::PMhv *pmhv_obj = (cuav::PMhv *)malloc(sizeof(cuav::PMhv));
     cuav::PMhv *pmhv_obj;
-    float pm_vlot_[2];
-    float pm_curr_;
+    float pm_vlot_[2] = {0};
+    float pm_curr_ = 0;
 
     benewake::TFmini *tfmini_obj;
     Range *Range_Up = (Range *)malloc(sizeof(Range));

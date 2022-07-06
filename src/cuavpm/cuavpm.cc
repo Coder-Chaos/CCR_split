@@ -66,7 +66,7 @@ namespace cuav
       }
       
       //从从机反馈的数据里面根据从机的协议提取我们想要的东西
-			dataVolt[0] = _buf * 5.0 * 60 / (256 * 3.3);
+			dataVolt[0] = _buf * 5 * 60 / (256 * 3.3f);
       dataVolt[1] = (dataVolt[0] - PMHV_VOLT_MIN)/(PMHV_VOLT_MAX-PMHV_VOLT_MIN) * 100;
 			//printf("buf%d; Volt: %4.2f\n", _buf,dataVolt[0]);
       return 1;
@@ -83,7 +83,7 @@ namespace cuav
       //buf = buf;
       
       //从从机反馈的数据里面根据从机的协议提取我们想要的东西
-			dataCurr[0] = _buf * 0.2 / 56;
+			dataCurr[0] = _buf * 0.2f / 56;
 			//printf("buf%d; Current: %2.2f\n", _buf, dataCurr[0]);
       return 1;
     }

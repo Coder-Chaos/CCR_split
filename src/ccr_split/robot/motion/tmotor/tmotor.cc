@@ -159,7 +159,7 @@ void TMotor::GetParam(const can_frame &recv_frame) {
 
     param_->tmtGetVel = v;
     param_->tmtGetTor = t;
-#if 1
+#if 0
     // calc turns
     // 
     param_->turns +=

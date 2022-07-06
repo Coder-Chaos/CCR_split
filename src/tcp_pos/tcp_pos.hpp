@@ -23,7 +23,7 @@ using matrix::Vector3f;
 using matrix::Vector;
 
 static const float          BIAS_MAX = 1e-1f;
-static const float          HIST_STEP = 0.2f;	// 20 hz
+static const float          HIST_STEP = 0.2f;	// 5 hz
 static const uint32_t		EST_STDDEV_Z_VALID = 2.0;	// 2.0 m
 static const uint32_t		EST_STDDEV_TZ_VALID = 2.0;	// 2.0 m
 static const float          Ps_MAX = 1.0e6f;	// max allowed value in state covariance
@@ -89,7 +89,7 @@ namespace ccr_split {
     float       psi = 0.0f;
 
     const float _dt_min = 0.00001f;
-	const float _dt_max = 0.02f;
+	const float _dt_max = 0.2f;
 
     Vector3f	_gyro;
 	Vector3f	_accel;
@@ -97,13 +97,14 @@ namespace ccr_split {
     Quatf		_q;
 	Vector3f	_rates;
 	Vector3f	_gyro_bias;
+	Vector<double, 3> y_global;
 
     bool		att_inited = false;
 	bool		_data_good = false;
 	bool		_ext_hdg_good = false;
 
-    float       _accel_z_stddev = 0.02f;
-    float       _gps_z_stddev = 0.1f;
+    float       _accel_z_stddev = 0.04f; // 0.04f
+    float       _gps_z_stddev = 2.0f; //RTK0.01f
 
     float       _pn_p_noise_density = 0.1f;
     float       _pn_v_noise_density = 0.1f;
@@ -113,6 +114,8 @@ namespace ccr_split {
     
     float       sample_freq = 800.0f;
     float       cutoff_freq = 30.0f;
+	int			_ipos = 0;
+	int			_iatt = 0;
     
     math::LowPassFilter2p	_filter{sample_freq, cutoff_freq};
     //math::LowPassFilter2p	_filter;
@@ -125,7 +128,7 @@ namespace ccr_split {
     RTK_DATA rtk;
 
     // read imu parameters thread
-    std::thread read_imu_data_thread_;
+    //std::thread read_imu_data_thread_;
     // read rtk parameters thread
     std::thread read_rtk_data_thread_;
 
@@ -251,19 +254,32 @@ public:
 	  _lidarUpdated(false)
     {
 
-      
+      /*
       // read motor parameter thread
       read_imu_data_thread_ = std::thread([&]() { recv_imu(); });
-      read_imu_data_thread_.detach();
-
-      read_rtk_data_thread_ = std::thread([&]() { recv_rtk();});
+      read_imu_data_thread_.detach();*/
+      read_rtk_data_thread_ = std::thread([&]() { 
+		for(;;){
+		  if(gpsMeasure(y_global) == 1){
+		  	_gpsUpdated =true;
+		  } else{
+			_gpsUpdated =false;
+		  }
+		  usleep(1000*100);
+		  }
+	  	}
+		  );
       read_rtk_data_thread_.detach();
       
+
 	  // assign distance subs to array  
 	  // initialize A, B,  P, x, u
 	  _x.setZero();
 	  _u.setZero();
-	  initSS();  
+	  initSS();
+      gettimeofday(&tv1,NULL);
+      _timeStamp = tv1.tv_sec*1000000 + tv1.tv_usec;
+	  last_time = tv1.tv_sec*1000000 + tv1.tv_usec;
 	  // print fusion settings to console
 
       }
@@ -295,7 +311,6 @@ public:
     void pos_predict(float dt);
     void pos_update();
 
-    void gpsInit1();
 	void gpsInit();
 	int Parse_GPS(char *data);
     int gpsMeasure(Vector<double, 3> &y);
@@ -305,9 +320,10 @@ public:
     bool att_update(float dt);
     bool att_run();
 
+	struct timeval tv1;
     // misc
 	uint64_t _time_att_origin;
-
+	uint64_t last_time;
 	uint64_t _timeStamp;
 	uint64_t _time_origin;
     uint64_t _time_last_hist;

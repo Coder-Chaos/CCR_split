@@ -32,20 +32,32 @@ void Estimator::gpsInit()
 	Vector<double, 3> temp;
 	Vector<double, n_y_gps> y;
 	int i = 0;
+	double gpsLat = 0;
+	double gpsLon = 0;
+	float gpsAlt = 0;
 	while(1){
-		break;
-		if(gpsMeasure(y_org) > 0)
+		//break;
+		int i1 = gpsMeasure(y_org);
+		if( i1 > 0)
 		{	
 			temp += y_org;
 			i ++;
 			if(i > 4)
 				break;
-			printf("i=%d; temp2=%f;\n", i, temp(2));		
+			gpsLat = temp(0);
+			gpsLon = temp(1);
+			gpsAlt = temp(2);
+			break;
+
+			//printf("i=%d; Lat=%f;Lon=%f;temp2=%f;\n", i, temp(0), temp(1), temp(2));		
+		} else{
+			//printf("Error gpsMeasure%d\n", i1);
 		}
 	}
-	double gpsLat = temp(0)/5;
+	/*double gpsLat = temp(0)/5;
 	double gpsLon = temp(1)/5;
 	float gpsAlt = temp(2)/5;
+	*/
 	//printf("gpsLat=%f; gpsLon=%f; gpsAlt=%f;\n", gpsLat, gpsLon, gpsAlt);
 	_sensorTimeout &= ~SENSOR_GPS;
 	_sensorFault &= ~SENSOR_GPS;
@@ -55,10 +67,10 @@ void Estimator::gpsInit()
 		_receivedGps = true;
 		// note we subtract X_z which is in down directon so it is
 		// an addition
-		_gpsAltOrigin = gpsAlt + _x(X_z)*cosf(theta);
+		_gpsAltOrigin = gpsAlt;
 		// find lat, lon of current origin by subtracting x and y
-		gpsLon = 120.75819277;
-    	gpsLat = 31.34534646;
+		//gpsLon = 120.75819277;
+    	//gpsLat = 31.34534646;
 		LonLat2UTM(gpsLon, gpsLat, _UTME, _UTMN);
 		//printf("UTME=%f; UTMN=%f;\n", _UTME, _UTMN);
 		/*
@@ -74,7 +86,7 @@ void Estimator::gpsInit()
 		_altOrigin = _gpsAltOrigin;
 		_altOriginInitialized = true;
 		_altOriginGlobal = true;
-		printf("[lpe] UTM origin init (gps) : lat %6.2f lon %6.2f alt %5.1f m\n",
+		printf("[lpe] UTM origin init (gps) : UTME %6.2f UTMN %6.2f alt %5.1f m\n",
 					     _UTME, _UTMN, double(_gpsAltOrigin));
 		
 		/*printf("[lpe] gps init "
@@ -119,7 +131,7 @@ int Estimator::Parse_GPS(char *data)
             {
                 strcpy(longtitude,field);
 				rtk.fX = atof(longtitude);
-				//printf("%f\n", rtk.fX);
+				//printf("fX%f", rtk.fX);
             }
             if (index == 3)
             {
@@ -130,7 +142,7 @@ int Estimator::Parse_GPS(char *data)
             {
 				strcpy(latitude,field);
 				rtk.fY = atof(latitude);
-				//printf("%f\n", rtk.fY);
+				//printf("fY%f", rtk.fY);
             }
 			if (index == 5)
             {
@@ -141,13 +153,37 @@ int Estimator::Parse_GPS(char *data)
             {
                 strcpy(nQ, field);
 				rtk.nQ = atof(nQ);;
-				//printf("%d\n", rtk.nQ);
+				//printf("nQ%d", rtk.nQ);
             }
+			/*if (index == 7)
+            {
+                strcpy(alt, field);
+				rtk.fH = atof(alt);;
+				printf("alt7=%lf", rtk.fH);
+            }
+			if (index == 8)
+            {
+                strcpy(alt, field);
+				rtk.fH = atof(alt);;
+				printf("alt8=%lf", rtk.fH);
+            }
+			if (index == 10)
+            {
+                strcpy(alt, field);
+				rtk.fH = atof(alt);;
+				printf("alt10=%lf", rtk.fH);
+            }
+			if (index == 11)
+            {
+                strcpy(alt, field);
+				rtk.fH = atof(alt);;
+				printf("alt11=%lf", rtk.fH);
+            }*/
 			if (index == 9)
             {
 				strcpy(alt,field);
                 rtk.fH = atof(alt);
-				//printf("%f\n", rtk.fH);
+				//printf("Alt=%lf\n", rtk.fH);
             }
         }
     }
@@ -161,7 +197,6 @@ int Estimator::gpsMeasure(Vector<double, 3> &y)
 	y.setZero();
 	char rtk_buff[RTK_BUFFER_SIZE];
     int ret,i;
-	float a;
 	//double UTME, UTMN;
 	int nb = rtk_server_.TcpRecvfromClient(rtk_buff, sizeof(rtk_buff));
 	
@@ -171,52 +206,64 @@ int Estimator::gpsMeasure(Vector<double, 3> &y)
 			i = strlen(strstr(rtk_buff, "$GNGGA"));
 			if(i > GNGGA_SIZE)    //保证buf数组中有一个完整的 "$GNGGA,——"字符串
             {
-                //ret=sscanf(rtk_buff,"$GNGGA,%f,%f,%c,%f,%c,%*d,%d,%*f,%f", &a, &rtk.fX, &rtk.cX, 
-                //    &rtk.fY, &rtk.cY, &rtk.nQ, &rtk.fH);
 				ret = Parse_GPS(rtk_buff);
-                if(ret==0 && (rtk.nQ==1||rtk.nQ==2) && rtk.fX!=0){
-					//printf("a=%f; cX:fX=%c:%f; cY:fY=%c:%f; fH=%f\n", a, rtk.cX, rtk.fX, 
-                       //rtk.cY,rtk.fY,rtk.fH);//此处可将解析出的数据发送给其他进程
+                if(ret==0 && (rtk.nQ > 0) && (rtk.fX * rtk.fY * rtk.fH !=0)){
+					y(0) = (int)(rtk.fX * 1e-2) +(rtk.fX * 1e-2 - (int)(rtk.fX * 1e-2))/0.6;
+					y(1) = (int)(rtk.fY * 1e-2) +(rtk.fY * 1e-2 - (int)(rtk.fY * 1e-2))/0.6;
+					y(2) = rtk.fH - 3.135;
+					//printf("cX:fX=%c:%f; cY:fY=%c:%f; fH=%f\n", rtk.cX, rtk.fX, 
+                    //   rtk.cY,rtk.fY,rtk.fH);//此处可将解析出的数据发送给其他进程
+					printf("y(0)=%f; y(1)=%f; y(2)=%f\n", y(0), y(1), y(2));
+					return 1;
                 } else{
 					//printf("Error:cX:fX=%c:%f; cY:fY=%c:%f; fH=%f; Q=%d\n", rtk.cX, rtk.fX, 
                     //    rtk.cY,rtk.fY,rtk.fH, rtk.nQ);
                     return -1;
                 }
-            }else{
-				return -1;
-			}
-		}else{
-			return -1;
+            }
 		}
 	}
-	//LonLat2UTM(rtk.fX, rtk.fY, UTME, UTMN);
-	y(0) = rtk.fX * 1e-2;
-	y(1) = rtk.fY * 1e-2;
-	y(2) = rtk.fH;
+	return -1;
+	//return 0;
 	//printf("y(0)=%f; y(1)=%f; y(2)=%f;\n", y(0), y(1), y(2));
 	//usleep(1000*200);
-	return 1;
+	
 }
 
 void Estimator::gpsCorrect()
 {
 	// measure
+	/*
 	Vector<double, 3> y_global;
 	Vector<double, n_y_gps> y_lobal;
 
-	if (gpsMeasure(y_global) < 0) { return; }
+	int i = gpsMeasure(y_global);
+	if (i != 1) { return; }
+	*/
 
 	// gps measurement in local frame
 	double  lat = y_global(0);
 	double  lon = y_global(1);
 	float  alt = y_global(2);
+	//printf("gpsM%d:gpsLat=%f; gpsLon=%f; gpsAlt=%f;\n", i, lat, lon, alt);
 	double px = 0;
 	double py = 0;
 	float pz = -(alt - _gpsAltOrigin);
 	LonLat2UTM(lon, lat, px, py);
 	Vector<float, n_y_gps> y;
 	y.setZero();
-	y(Y_gps_z) = pz/cosf(theta);
+
+	if(_theta < 0.78f){
+		//// theta < 45°
+		y(Y_gps_z) = pz/cosf(theta);
+		printf("atl_y0=%4.3f", y(0));
+	} else{
+		// theta >= 45°
+		int k = ((px-_UTME) > 0) ? 1 : (-1);
+		y(Y_gps_z) = k * sqrt((px-_UTME)*(px-_UTME)+(py-_UTMN)*(py-_UTMN))/sinf(_theta);
+		printf("UTM_y0=%4.3f;px=%lfUTME=%lf;py=%lfUTMN=%lf\n", y(0), px, _UTME, py, _UTMN);
+	}
+	
 
 	// gps measurement matrix, measures position and velocity
 	// C = [1 0 0 0]
@@ -242,14 +289,14 @@ void Estimator::gpsCorrect()
 
 	// residual
 	Vector<float, n_y_gps> r = y - C * _x0;
-
+	printf("r=%4.3f;", r(0));
 	// residual covariance
 	// S = [_P(X_z, X_z)+var_z]
 	Matrix<float, n_y_gps, n_y_gps> S = C * _P * C.transpose() + R;
-
+	printf("S=%4.3f;", S(0, 0));
 	// residual covariance, (inverse)
 	Matrix<float, n_y_gps, n_y_gps> S_I = inv<float, n_y_gps>(S);
-
+	printf("S_I=%4.3f;", S_I(0,0));
 	// fault detection
 	float beta = (r.transpose() * (S_I * r))(0, 0);
 
@@ -259,8 +306,11 @@ void Estimator::gpsCorrect()
 	// kalman filter correction always for GPS 
 	// K = [_P(X_z, X_z)/(_P(X_z, X_z)+var_z), 0, 0, 0]T
 	Matrix<float, n_x, n_y_gps> K = _P * C.transpose() * S_I;
+	printf("K=%4.3f;%4.3f;%4.3f;", K(0,0), K(0,1),K(0,2));
 	Vector<float, n_x> dx = K * r;
+	printf("dx=%4.3f;%4.3f;%4.3f\n", dx(0), dx(1), dx(2));
 	_x += dx;
+	
 	_P -= K * C * _P;
 }
 

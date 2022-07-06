@@ -111,9 +111,11 @@ namespace ccr_split
     case mMoveUpCmd:
       if (motion_state_->current_state != mMoveUpState){
         MMoveUp();
-        printf("mMoveUp finished!\n");
+        //printf("mMoveUp finished!\n");
       } else{
         //printf("mMoveUp finished!\n");
+        //PulleysPullingup(); //获取卷扬机返回值
+        //GetrmdParam();
       }
       motion_state_->current_cmd = motion_cmd_->command;
       motion_state_->current_state = mMoveUpState;
@@ -122,9 +124,11 @@ namespace ccr_split
     case mMoveDownCmd:
       if (motion_state_->current_state != mMoveDownState){
         MMoveDown();
-        printf("mMoveDown finished!\n");
+        //printf("mMoveDown finished!\n");
       } else{
         //printf("mMoveDown finished!\n");
+        //PulleysPullingdown(); //获取卷扬机返回值
+        //GetrmdParam();
       }
       motion_state_->current_cmd = motion_cmd_->command;
       motion_state_->current_state = mMoveDownState;
@@ -641,6 +645,7 @@ namespace ccr_split
     // change upclaw1 state to loose
 	  maxons_->at(0).param_->motion_state = kLoose;
     printf("UpClaw loose Done!\n");
+    //maxons_->at(0).MotorDisable();
   }
   //DownClaw Hold
 	void Motion::DownClawHold()
@@ -664,12 +669,9 @@ namespace ccr_split
   {
     __s32 pos1 = kDownClawLooseDistance;
     __s32 pos2 = kDownClawLooseDistance;
-    //if(maxons_->at(1).param_->StatusWord != 0x0240){
-      maxons_->at(1).MotorDisable();
-    //}
-    //if(maxons_->at(2).param_->StatusWord != 0x0240){
-      maxons_->at(2).MotorDisable();;
-    //}
+    maxons_->at(1).MotorDisable();
+    maxons_->at(2).MotorDisable();
+
     maxons_->at(1).MotorEnable();
     maxons_->at(2).MotorEnable();
 	  
@@ -679,10 +681,12 @@ namespace ccr_split
       maxons_->at(1).param_->PosPV + pos1, maxons_->at(2).param_->PosPV + pos2);
 
 	  printf("down claw loose Done!\n");
-    if(flag > 0){
+    if(flag > -1){
 	    // change downclaw1 state to
 	    maxons_->at(1).param_->motion_state = kLoose;
 	    maxons_->at(2).param_->motion_state = kLoose;
+      //maxons_->at(1).MotorDisable();
+      //maxons_->at(2).MotorDisable();
     } else{
       //maxons_->at(1).SetMotorAbsPos(maxons_->at(1).param_, maxons_->at(2).param_, 
       //maxons_->at(1).param_->PosPV + pos1, maxons_->at(2).param_->PosPV + pos2);
@@ -820,12 +824,12 @@ namespace ccr_split
       // motors vel_up stop
       for (int i = 0; i < 2; i++)
       {
-      tmotors_->at(2*i).param_->tmtSetVel = 0.05f;
-      tmotors_->at(2*i).param_->tmtSetKD = 0.3f;
+      tmotors_->at(2*i).param_->tmtSetVel = 0.05f; //1.5-76.4kg
+      tmotors_->at(2*i).param_->tmtSetKD = 0.3f; //4.5
       tmotors_->at(2*i).SetVel(tmotors_->at(2*i).param_->tmtSetVel,
                               tmotors_->at(2*i).param_->tmtSetKD);
-      tmotors_->at(2*i + 1).param_->tmtSetVel = 0.05f;
-      tmotors_->at(2*i + 1).param_->tmtSetKD = 0.3f;
+      tmotors_->at(2*i + 1).param_->tmtSetVel = 0.05f; //1.5-76.4kg
+      tmotors_->at(2*i + 1).param_->tmtSetKD = 0.3f; //4.5
       tmotors_->at(2*i + 1).SetVel(tmotors_->at(2*i + 1).param_->tmtSetVel, 
         tmotors_->at(2*i + 1).param_->tmtSetKD);
       
@@ -900,6 +904,8 @@ namespace ccr_split
     //torque
     __s16 torque1 = kPulleysHoldTorque;
     __s16 torque2 = -kPulleysHoldTorque;
+    maxons_->at(3).param_->motion_state = kIdle;
+    maxons_->at(4).param_->motion_state = kIdle;
     if(maxons_->at(0).param_->motion_state == kHold && maxons_->at(1).param_->motion_state 
       == kHold && maxons_->at(2).param_->motion_state == kHold){
       maxons_->at(3).SetRMDTorque(maxons_->at(3).param_, maxons_->at(4).param_, torque1, torque2);
@@ -918,18 +924,19 @@ namespace ccr_split
   }
   //Pulleys stop
   void Motion::PulleysStop(){
-    float n1 = maxons_->at(3).param_->pos_sum/16383;
-    float f1 = n1 * PI * 118;
-    float n2 = maxons_->at(4).param_->pos_sum/16383;
-    float f2 = n2 * PI * 118;
-    //printf("PulleysStop odometer_ = %f, %fmm; %f, %fmm.\n", n1, f1, n2, f2);
+    double f1 = maxons_->at(3).param_->pos_sum;
+    //float f1 = n1 * PI * 118;
+    double f2 = maxons_->at(4).param_->pos_sum;
+    //float f2 = n2 * PI * 118;
+    printf("PulleysStop odometer_ = %6.3fm; %6.3fm.\n", f1, f2);
     //
+    maxons_->at(3).param_->motion_state = kStop;
+    maxons_->at(4).param_->motion_state = kStop;  
     maxons_->at(3).SetRMDPos(maxons_->at(3).param_, maxons_->at(4).param_, 0, 0);
     //printf("PulleysStop Loop:Vel1=%d Vel2=%d!\n",
     //maxons_->at(3).param_->actual_average_vel, maxons_->at(4).param_->actual_average_vel);
 
-    maxons_->at(3).param_->motion_state = kStop;
-    maxons_->at(4).param_->motion_state = kStop;    
+      
   }
   //Pulleys up
   void Motion::PulleysPullingup(){
@@ -940,6 +947,7 @@ namespace ccr_split
     maxons_->at(4).param_->motion_state = kPullingUp;
 
     maxons_->at(3).SetRMDSpeed(maxons_->at(3).param_, maxons_->at(4).param_, speed1, speed2);
+    //GetrmdParam();
     //printf("PulleysLoose:Vel1=%d Vel2=%d!\n",
     //maxons_->at(3).param_->actual_average_vel, maxons_->at(4).param_->actual_average_vel);
 
@@ -953,6 +961,7 @@ namespace ccr_split
     maxons_->at(4).param_->motion_state = kPullingDown;
 
     maxons_->at(3).SetRMDSpeed(maxons_->at(3).param_, maxons_->at(4).param_, speed1, speed2);
+    //GetrmdParam();
     //printf("PulleysLoose:Vel1=%d Vel2=%d!\n",
     //maxons_->at(3).param_->actual_average_vel, maxons_->at(4).param_->actual_average_vel);
 
@@ -1019,9 +1028,13 @@ namespace ccr_split
       //PulleysStop();
       //DownClaw loose
       DownClawLoose();
-      printf("l1022!\n");
+      //printf("l1022!\n");
       //Pulleys up
       PulleysPullingup();
+      /*for(int i=0;i<10;i++){
+        PulleysPullingup();
+        usleep(1000*100);
+      }*/
     } else{
       printf("MMoveUp-Warning: UpClaw hold or Pulleys stop!!\n");
     }
@@ -1217,7 +1230,7 @@ namespace ccr_split
     if(j%1000 == 0){
       printf("turns:%f, %f, %f, %f\n", tmotors_->at(0).param_->turns, tmotors_->at(1).param_->turns, 
       tmotors_->at(2).param_->turns, tmotors_->at(3).param_->turns);
-      printf("odometer_%f\n", odometer_);
+      //printf("odometer_%f\n", odometer_);
       //printf("odometer_%f\n", odometer_);
     }
     j++;
@@ -1225,42 +1238,143 @@ namespace ccr_split
     }
   }
 
+  void Motion::GetrmdParam(){
+    /*for (;;) {
+      for(int i = 8; i<10; i++){
+        maxons_->begin()->TxRMD0(i, 0x90);
+      }
+      usleep(1000*50);
+    }*/
+    /*for(int i = 8; i<10; i++){
+      maxons_->begin()->TxRMD0(i, 0x90);
+    }*/
+    for(int i = 8; i<10; i++){
+      maxons_->begin()->TxRMD0(i, 0x92);
+    }
+  }
+
   void Motion::GetmaxonsParam()
   {
     int i, j1, j2;
-    float p;
+    __s32 p1 = 0;
+    __s32 p2 = 0;
     for (;;) {
       
       can_frame recv_frame;
       __u16 cob_id, SlaveId, t;
+
+      //common::Net tcp_1{common::protocal_type::TCP, common::type::SERVER,
+      //                      "192.168.10.100", 4001};
+      //recv_can(recv_frame, *(maxons_->begin()->tcp_));
       
-      recv_can(recv_frame, *(maxons_->begin()->tcp_));
       SlaveId = (recv_frame.can_id & 0x0F);
       cob_id = recv_frame.can_id & (~0x000F);
       //printf("recv_can865\n");     
       for (auto maxon : *maxons_){
+        recv_can(recv_frame, *(maxon.tcp_));
+        SlaveId = (recv_frame.can_id & 0x0F);
+        cob_id = recv_frame.can_id & (~0x000F);
         if(maxon.id_ == SlaveId){
           maxon.MotorParaRead(cob_id, maxon.param_, &recv_frame);
           // calc turns
           if(maxon.param_->motion_state == kPullingUp || 
             maxon.param_->motion_state == kPullingDown){
+            //编码器位置计里程
             if(maxon.id_ == kPulley1){
-              if(j1 <1){ p= maxon.param_->PosPV;}
-              odometer_p1 += maxon.param_->PosPV - p;
-              maxon.param_->pos_sum = odometer_p1;
-              p = maxon.param_->PosPV;
+              if(j1 <1){ p1= maxon.param_->PosPV;}
+              //odometer_p1 += (maxon.param_->PosPV - p1)*0.01f*PI/180*70;
+              
+              odometer_p1 += (maxon.param_->PosPV - p1)*PI/65535*35;  //FFFF-180°
+              // 0xFFFF作为判断中点值
+              if(maxon.param_->motion_state == kPullingUp && (maxon.param_->PosPV - p1) < 0){
+                odometer_p1 += PI*35;
+              } else if(maxon.param_->motion_state == kPullingDown && (maxon.param_->PosPV - p1) > 0){
+                odometer_p1 -= PI*35;
+              }
+              // 0x7FFF作为判断中点值
+              //if((maxon.param_->PosPV-32767)*(p1-32767) < 0){
+              //  if(maxon.param_->motion_state == kPullingUp){
+              //    odometer_p1 -= PI*35;
+              //  } else if(maxon.param_->motion_state == kPullingDown){
+              //    odometer_p1 += PI*35;
+              //  }
+              //}
+              maxon.param_->pos_sum = odometer_p1/1000;
+              p1 = maxon.param_->PosPV;
               j1 ++;
             } else if(maxon.id_ == kPulley2){
-              if(j2 <1){ p= maxon.param_->PosPV;}
-              odometer_p2 += maxon.param_->PosPV - p;
-              maxon.param_->pos_sum =odometer_p2;
-              p = maxon.param_->PosPV;
+              if(j2 <1){ p2= maxon.param_->PosPV;}
+              //odometer_p2 += (maxon.param_->PosPV - p2)*0.01f*PI/180*70;
+              odometer_p2 += (maxon.param_->PosPV - p2)*PI/65535*35;
+              if(maxon.param_->motion_state == kPullingUp && (maxon.param_->PosPV - p2) > 0){
+                odometer_p2 -= PI*35;
+              } else if(maxon.param_->motion_state == kPullingDown && (maxon.param_->PosPV - p2) < 0){
+                odometer_p2 += PI*35;
+              }
+              //if((maxon.param_->PosPV-32767)*(p1-32767) < 0){
+              //  if(maxon.param_->motion_state == kPullingUp){
+              //    odometer_p2 += PI*35;
+              //  } else if(maxon.param_->motion_state == kPullingDown){
+              //    odometer_p2 -= PI*35;
+              //  }
+              //}
+              maxon.param_->pos_sum =odometer_p2/1000;
+              p2 = maxon.param_->PosPV;
               j2 ++;
             } else{
               j1 = 0; j2 = 0;
             }
-          }
+
+            //多圈0x92计里程
+            /*if(maxon.id_ == kPulley1){
+              if(j1 <1){ p1= maxon.param_->PosPV_rmd;}
+              //odometer_p1 += (maxon.param_->PosPV - p1)*0.01f*PI/180*70;
+              
+              odometer_p1 += (maxon.param_->PosPV_rmd - p1)*PI/180/100/6*35;  //FFFF-180°
+              // 0xFFFF作为判断中点值
+              if(maxon.param_->motion_state == kPullingUp && (maxon.param_->PosPV_rmd - p1) < 0){
+                odometer_p1 += 0xffffffffffffff*PI/180/100/6*35;
+              } else if(maxon.param_->motion_state == kPullingDown && (maxon.param_->PosPV_rmd - p1) > 0){
+                odometer_p1 -= 0xffffffffffffff*PI/180/100/6*35;
+              }
+              // 0x7FFF作为判断中点值
+              //if((maxon.param_->PosPV-0x7fffffffffffff)*(p1-0x7fffffffffffff) < 0){
+              //  if(maxon.param_->motion_state == kPullingUp){
+              //    odometer_p1 -= PI*35;
+              //  } else if(maxon.param_->motion_state == kPullingDown){
+              //    odometer_p1 += PI*35;
+              //  }
+              //}
+              maxon.param_->pos_sum = odometer_p1/1000;
+              p1 = maxon.param_->PosPV_rmd;
+              j1 ++;
+            } else if(maxon.id_ == kPulley2){
+              if(j2 <1){ p2= maxon.param_->PosPV_rmd;}
+              //odometer_p2 += (maxon.param_->PosPV - p2)*0.01f*PI/180*70;
+              odometer_p2 += (maxon.param_->PosPV_rmd - p2)*PI/180/100/6*35;
+              if(maxon.param_->motion_state == kPullingUp && (maxon.param_->PosPV_rmd - p2) > 0){
+                odometer_p2 -= 0xffffffffffffff*PI/180/100/6*35;
+              } else if(maxon.param_->motion_state == kPullingDown && (maxon.param_->PosPV_rmd - p2) < 0){
+                odometer_p2 += 0xffffffffffffff*PI/180/100/6*35;
+              }
+              //if((maxon.param_->PosPV-0x7fff)*(p1-0x7fff) < 0){
+              //  if(maxon.param_->motion_state == kPullingUp){
+              //    odometer_p2 += PI*35;
+              //  } else if(maxon.param_->motion_state == kPullingDown){
+              //    odometer_p2 -= PI*35;
+              //  }
+              //}
+              maxon.param_->pos_sum =odometer_p2/1000;
+              p2 = maxon.param_->PosPV_rmd;
+              j2 ++;
+            } else{
+              j1 = 0; j2 = 0;
+            }*/
+            
+            //printf("loop%d:p=%d,%d; %d,%d.odom_p=%6.3f;%6.3f\n", i,j1, p1,j2, p2, odometer_p1, odometer_p2);
+          } 
         }
+        //printf("loop%dId%d:p=%d,%d; %d,%d.odom_p=%6.3f;%6.3f\n", i, SlaveId, j1, p1,j2, p2, odometer_p1, odometer_p2);
       }
       // delay 10ms
       usleep(100);

@@ -58,13 +58,14 @@ namespace ccr_split {
     double odometer_p2 = 0;
     /* motor parameters */
     // kd, 0-5
-    static constexpr float Kd = 5;
+    static constexpr float Kd = 4;
 
     // kp, 0-500
     static constexpr float Kp = 5;
 
     // read motor parameters thread
     std::thread read_tmotors_param_thread_;
+    std::thread read_rmd_param_thread_;
 
     // read maxon parameters thread
     std::thread read_maxon_param_thread_;
@@ -88,6 +89,11 @@ namespace ccr_split {
       // read motor parameter thread
       read_tmotors_param_thread_ = std::thread([&]() { GetTMotorsParam(); });
       read_tmotors_param_thread_.detach();
+
+      // read RMD parameter thread
+      //read_rmd_param_thread_ = std::thread([&]() { GetrmdParam(); });
+      //read_rmd_param_thread_.detach();
+      //发送过快影响Maxon接收，过慢里程数据不准
       
       // read maxon parameter thread
       read_maxon_param_thread_ = std::thread([&]() { GetmaxonsParam(); });
@@ -225,6 +231,7 @@ namespace ccr_split {
 
     // get motor parameter
     void GetTMotorsParam();
+    void GetrmdParam();
     
     void GetmaxonsParam();
     void GetmaxonsParam1();

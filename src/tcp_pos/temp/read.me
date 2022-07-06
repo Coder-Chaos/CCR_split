@@ -1,0 +1,60 @@
+
+Github Token
+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
+
+git remote set-url origin https://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@github.com/Coder-Chaos/ccr_manifold.git
+
+
+环境配置
+
+sudo apt install net-tools
+ifconfig
+sudo apt install openssh-server
+/etc/init.d/ssh restart
+在笔记本上：ping 192.168.**.**
+sudo gedit /etc/hosts
+加上一行：192.168.**.** fast-drone
+ping fast-drone
+ssh fast-drone@fast-drone(ssh 用户名@别名)
+
+ROS
+sudo apt-get update
+sudo apt-get install ros-melodic-desktop-full
+sudo rosdep init
+rosdep update
+需翻墙VPN
+sudo apt install python-rosdep2或python3-rosdep2
+echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+重启
+
+MAVROS
+方法1
+sudo apt install ros-melodic-mavros ros-melodic-mavros-extras ros-melodic-control-toolbox
+cd /opt/ros/melodic/lib/mavros
+sudo ./install_geographiclib_datasets.sh
+sudo apt install python-catkin-tools python-rosinstall-generator -y
+方法2
+源码安装
+
+Ceres-solver安装
+http://ceres-solver.org/installation.html#linux
+多个版本OpenCV安装
+https://blog.csdn.net/learning_tortosie/article/details/80594399
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

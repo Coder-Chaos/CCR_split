@@ -451,12 +451,14 @@ __s8 maxon::SetRMDSpeed(maxon_type *motor1, maxon_type *motor2,
   int i = 0;
   TxRMD2(motor1->motor_id, speed1);
   TxRMD2(motor2->motor_id, speed2);
+  //TxRMD0(i, 0x92);
   do{
     usleep(kDelayEpos);
     i ++;
     if(i%50 == 0){
       TxRMD2(motor1->motor_id, speed1);
       TxRMD2(motor2->motor_id, speed2);}
+    //TxRMD0(i, 0x92);
     //if(i % 1000 == 0){
       //
     //}
@@ -948,7 +950,7 @@ __s8 maxon::SetTargetTorque(maxon_type *motor1, maxon_type *motor2,
   while (motor1->mode_display != 0x0A || motor2->mode_display != 0x0A
         || abs(motor1->actual_average_torque - torque1) > 20 || abs(
         motor2->actual_average_torque - torque2) > 20 || abs(motor1->
-        actual_average_vel) > 100 || abs(motor2->actual_average_vel) > 100) {
+        actual_average_vel) > 1000 || abs(motor2->actual_average_vel) > 1000) {
     if( i % 200 == 0){
       TxPdo3(motor1->motor_id, torque1, 0x0A);
       TxPdo3(motor2->motor_id, torque2, 0x0A);
@@ -956,8 +958,9 @@ __s8 maxon::SetTargetTorque(maxon_type *motor1, maxon_type *motor2,
     usleep(kDelayEpos);
     i ++;
     if( i % 1000 == 0){  
-      printf("motor%d&%d torque break Torq %d, %d!\n", motor1->motor_id, motor2->motor_id, 
-        motor1->actual_average_torque, motor2->actual_average_torque);
+      printf("motor%d&%d torque break Torq %d, %d; vel %d,%d!\n", motor1->motor_id, motor2->motor_id, 
+        motor1->actual_average_torque, motor2->actual_average_torque, motor1->
+        actual_average_vel, motor2->actual_average_vel);
       //break;
     }
   }
@@ -1016,9 +1019,15 @@ void maxon::MotorParaRead(__u16 cob_id, maxon_type *motor,
     case RMD1tx:
       //printf("RMD1tx%x\n", RMD1tx);
       motor->StatusWord = (int8_t)(recv_frame->data[0]);
-      motor->TrqPV = (int16_t)((recv_frame->data[3] << 8) | recv_frame->data[2]);
-      motor->actual_average_vel = (int16_t)((recv_frame->data[5] << 8) | recv_frame->data[4]);
-      motor->PosPV = (int16_t)((recv_frame->data[7] << 8) | (recv_frame->data[6]));
+      if(motor->StatusWord == 0x92){
+        motor->PosPV_rmd = (__s64)((recv_frame->data[7] << 48) | (recv_frame->data[6] << 40) | (recv_frame->data[5] << 32) | 
+          (recv_frame->data[4] << 24) | (recv_frame->data[3] << 16) | (recv_frame->data[2] << 8) | (recv_frame->data[1]));
+      } else{
+        motor->TrqPV = (int16_t)((recv_frame->data[3] << 8) | recv_frame->data[2]);
+        motor->actual_average_vel = (int16_t)((recv_frame->data[5] << 8) | recv_frame->data[4]);
+        motor->PosPV = (__u16)((recv_frame->data[7] << 8) | (recv_frame->data[6]));
+      }
+      
       //printf("actual_average_vel%d\n", motor->actual_average_vel);
       break;    
 

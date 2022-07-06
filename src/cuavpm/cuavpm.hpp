@@ -33,6 +33,14 @@ namespace cuav
 {
   class PMhv
   {
+    private:
+      std::string portName_;
+      //int baudRate_;
+      int file_;
+
+      bool readData(uint8_t & _buf, uint8_t chn);
+      bool writeData(uint8_t chn);
+
     public:
       PMhv(std::string _name);
       ~PMhv(){};
@@ -42,14 +50,6 @@ namespace cuav
 
       float dataVolt[2];
       float dataCurr[1];
-
-    private:
-      std::string portName_;
-      //int baudRate_;
-      int file_;
-
-      bool readData(uint8_t & _buf, uint8_t chn);
-      bool writeData(uint8_t chn);
   };
   
 }

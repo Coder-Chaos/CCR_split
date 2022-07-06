@@ -121,7 +121,7 @@ namespace ccr_split
     /* pmhv recv thread */
     pmhv_thread_ = std::thread([&]()
                                  {
-                                   //
+                                   printf("pmhv_thread_ start\n");
                                    while (false == stop_pmhv_signal_ )
                                    {
                                      //printf("pmhv_thread_ start\n");
@@ -136,7 +136,7 @@ namespace ccr_split
                                         if(pm_vlot_[1] < 0.2f)
                                           printf("Warning:volt=%2.2f.\n", pm_vlot_[1]);
                                       }
-                                      else if(pmhv_obj->getCurr() == -1.0)
+                                      else if(pmhv_obj->getVolt() == -1.0)
                                       {
                                         log_error("PMhv failed to read data!");
                                         break;
@@ -144,7 +144,7 @@ namespace ccr_split
                                       if(i % 1000 == 0)
                                        printf("volt=%2.2f/%2.2f%%;curr=%2.2f.\n", pm_vlot_[0], pm_vlot_[1], pm_curr_); 
                                                                         
-                                      usleep(10000);
+                                      usleep(1000*10);
                                       i++;
                                     }
                                    
@@ -154,11 +154,12 @@ namespace ccr_split
 
   void Robot::PMhvStop()
   {
-    //log_info("TF02 Stop1.");
+    log_info("PMhvStop0.");
     stop_pmhv_signal_ = true;
     
-    pmhv_thread_.join();
-    //tf03_thread_.detach();
+    pmhv_thread_.detach();
+    //pmhv_thread_.join();
+   
     pmhv_obj->closePort();
     log_info("PMhv Stop.");
   }
@@ -187,13 +188,13 @@ namespace ccr_split
     /* tfmini recv thread */
     tfmini_thread_ = std::thread([&]()
                                  {
-                                   //
+                                   printf("tfmini_thread_ start\n");
                                    while (false == stop_tfmini_signal_ )
                                    {
-                                     //printf("tfmini_thread_ start\n");
+                                     
                                       dist1 = tfmini_obj->getDist();
                                       dist1_stop = 3.5f;
-                                      if(i % 1000 == 0)
+                                      if(i % 10010 == 0)
                                        printf("odometer_up=%4.2fm; dist_up=%4.2fm.\n", odometer_up, dist1);
                                       if(dist1 > 0 && dist1 < Range_Up->max_range)
                                       {
@@ -225,7 +226,7 @@ namespace ccr_split
                                       }
                                       else if(dist1 == 0.0)
                                       {
-                                        log_error("TFmini data 0.0 error!");
+                                        //log_error("TFmini data 0.0 error!");
                                       }                                      
 
                                       usleep(5000);
@@ -269,13 +270,13 @@ namespace ccr_split
     /* tfmini recv thread */
     tf03_thread_ = std::thread([&]()
                                  {
-                                   //
+                                   printf("tf03_thread_ start\n");
                                    while (false == stop_tf03_signal_ )
                                    {
                                      //printf("tf03_thread_ start\n");
                                      dist = tf03_obj->getDist();                                    
                                      dist_stop = 3.5f;
-                                     if(i % 1001 == 0)
+                                     if(i % 10010 == 0)
                                       printf("\rdist_mid=%4.2fm.\n", dist);
                                      if(dist > 0 && dist < Range_->max_range)
                                      {
@@ -348,7 +349,7 @@ namespace ccr_split
     /* tfmini recv thread */
     tf02_thread_ = std::thread([&]()
                                  {
-                                   //
+                                   printf("tf02_thread_ start\n");
                                    while (false == stop_tf02_signal_ )
                                    {
                                      if(recv_tf(recv_tf02, tcp_tf02_) > 0){
@@ -357,7 +358,7 @@ namespace ccr_split
                                      }
                                 
                                      dist2_stop = 3.5f;
-                                     if(i % 1000 == 0)
+                                     if(i % 500 == 0)
                                       //printf("can_id:0x%x\n", recv_tf02.can_id);
                                       printf("\rodometer_down=%4.2fm; dist_down=%4.2fm.\n", odometer_down, dist2);
                                      if(dist2 > 0 && dist2 < Range_Down->max_range)
@@ -470,7 +471,7 @@ namespace ccr_split
     /* create Getatt thread */
     att_thread_ = std::thread([&]()
                                  {
-                                   //log_info("att_thread_ Start.");
+                                   log_info("att_thread_ Start.");
                                    //   Getatt thread
                                    while (false == stop_att_signal_)
                                    {
@@ -479,7 +480,7 @@ namespace ccr_split
                                      //recv_rtk(rtk, rtk_server_);
                                      
                                      // refresh rate ms
-                                     usleep(1000);
+                                     //usleep(1000*20);
                                    }
                                    
                                    
@@ -498,25 +499,27 @@ namespace ccr_split
   void Robot::Logdata()
   {
 		printf("fopen!\n");
+    char filename[200] = "/home/chaos/ccr_nx/log/att.me";
+    fp = fopen (filename, "w+");
+    //fp = fopen ("/home/chaos/ccr_nx/log/att.me", "w+");
     
-    fp = fopen ("/home/chaos/ccr_nx/log/att.me", "w+");
-    //printf("fprintf0!\n");
-    fprintf(fp, "%10s %10s %10s %10s %10s %10s\n", "time", "theta", "psi", "pos", "vel", "accel");
+    //fprintf(fp, "%6s\t%6s\t%6s\t%6s\t%6s\t%6s\n", "time", "theta", "psi", "pos", "vel", "accel_u");
     //fprintf(fp,"%10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n", "time", "theta", "psi", "pos", "vel", "accel", 
     //  "pos_f", "vel_f", "accel_f", "Volt");
-    printf("fprintf1!\n");
+    fprintf(fp,"%6s\t%6s\t%6s\t%6s\t%6s\t%6s\t%6s\t%6s\n", "time", "theta", "pos", "vel", "u(0)", 
+      "pos_f", "vel_f", "acc_f");
     /* create Getdata thread */
     log_thread_ = std::thread([&]()
                                  {
-                                   
+                                   log_info("log_thread_ Start.");
                                    //   Getdata thread
                                    while (false == stop_log_signal_)
                                    {
                                                                                                                                                 				                                                                 				                              
-				                              fprintf(fp,"%10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n", est_._dt_now, 
-                                        est_._theta, est_._psi, est_._x(0), est_._x(1), est_._u(0));
+				                              fprintf(fp,"%6.3f\t%6.3f\t%6.3f\t%6.3f\t%6.3f\t%6.3f\t%6.3f\t%6.3f\n", est_._dt_now, 
+                                        est_._theta*180/PI, est_._x(0), est_._x(1), est_._u(0), est_._xf(0), est_._xf(1), est_._xf(2));
                                       			                              
-                                      usleep(1000*100);                                      
+                                      usleep(1000*200);                                      
                                       //printf("fprintf done!\n");
                                    }                                  
                                  });
@@ -541,7 +544,7 @@ namespace ccr_split
     /* create Getatt thread */
     pos_thread_ = std::thread([&]()
                                  {
-                                   //log_info("att_thread_ Start.");
+                                   log_info("pos_thread_ Start.");
                                    //   Getatt thread
                                    while (false == stop_pos_signal_)
                                    {
@@ -549,7 +552,7 @@ namespace ccr_split
                                      est_.pos_update();
                                      
                                      // refresh rate ms
-                                     usleep(1000*20);
+                                     usleep(1000*100);
                                    }
                                    
                                  });
@@ -636,16 +639,11 @@ namespace ccr_split
 
   void Robot::Stop()
   {
-    log_info("Start stop motion_thread.\n");
     motion_stop_signal_ = true;
     motion_thread_.join();
-    log_info("Start stop robot.\n");
     // force stop
     motion_.Stop();
-    
-    log_info("stop robot.\n");
     motion_.Idle();
-    log_info("Idle robot.\n");
     tcp_server_.closePort();
     printf("tcp_server_ close done!\n");
   }
